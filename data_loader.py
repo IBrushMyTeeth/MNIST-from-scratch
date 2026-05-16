@@ -2,7 +2,6 @@ import numpy as np
 import pandas as pd
 from pathlib import Path
 from numpy.typing import NDArray
-from typing import Optional
 
 
 Sample = NDArray[np.float32]
@@ -18,7 +17,7 @@ class MNISTDataLoader:
     def __init__(self,
         filepath: str | Path,
         normalize: bool = False,
-        seed: Optional[int] = None
+        seed: int | None = None
     ) -> None:
 
         self.filepath = Path(filepath)
