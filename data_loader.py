@@ -1,18 +1,32 @@
 import numpy as np
 import pandas as pd
 from pathlib import Path
+from numpy.typing import NDArray
+from typing import Optional
+
+
+Sample = NDArray[np.float32]
+Samples = NDArray[np.float32]
+
+Label = np.int64
+Labels = NDArray[np.int64]
 
 
 class MNISTDataLoader:
     """Load, preprocess, and split the MNIST dataset."""
 
-    def __init__(self, filepath, normalize=False, seed=None):
+    def __init__(self,
+        filepath: str | Path,
+        normalize: bool = False,
+        seed: Optional[int] = None
+    ) -> None:
+
         self.filepath = Path(filepath)
         self.normalize = normalize
         self.seed = seed
         self._samples, self._labels = self._load()
 
-    def _load(self):
+    def _load(self) -> tuple[Samples, Labels]:
         """Read the dataset from disk and return samples + labels"""
         if not self.filepath.exists():
             raise FileNotFoundError(f"Dataset not found at '{self.filepath}'")
@@ -27,23 +41,31 @@ class MNISTDataLoader:
         
         return samples, labels
     
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self._labels)
     
-    def __getitem__(self, idx):
+    def __getitem__(self, idx: int) -> tuple[Sample, Label]:
         return self._samples[idx], self._labels[idx]
     
     @property
-    def samples(self):
+    def samples(self) -> Samples:
         """Return the dataset samples"""
         return self._samples
     
     @property
-    def labels(self):
+    def labels(self) -> Labels:
         """Return the dataset labels"""
         return self._labels
     
-    def train_test_split(self, test_size=0.3):
+    def train_test_split(
+        self,
+        test_size: float = 0.3
+    ) -> tuple[
+        Samples,
+        Labels,
+        Samples,
+        Labels
+    ]:
         """Split the dataset into randomized training and test splits"""
 
         if not 0 < test_size < 1:

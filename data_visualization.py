@@ -1,20 +1,44 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from math import ceil
+from numpy.typing import NDArray
 
-def _reshape_image(sample, image_shape=(28, 28)):
+
+FloatArray = NDArray[np.float32]
+IntArray = NDArray[np.int64]
+
+
+def _reshape_image(
+    sample: FloatArray,
+    image_shape: tuple[int, int] =(28, 28)
+) -> FloatArray:
     """Reshape a flattened image vector into image dimensions"""
     return sample.reshape(image_shape)
 
-def show_image(sample, image_shape=(28, 28), cmap="gray"):
+def show_image(
+    sample: FloatArray,
+    image_shape: tuple[int, int] = (28, 28),
+    cmap: str ="gray"
+) -> None:
     """Display a single image"""
+
     image = _reshape_image(sample, image_shape)
     plt.imshow(image, cmap=cmap)
     plt.axis("off")
     plt.show()
 
-def show_random_image(samples, labels, rng, image_shape=(28, 28), cmap="gray"):
+def show_random_image(
+    samples: FloatArray,
+    labels: IntArray,
+    rng: np.random.Generator | None = None,
+    image_shape: tuple[int, int] =(28, 28),
+    cmap: str ="gray"
+) -> None:
     """Display a random image and its label"""
+
+    if rng is None:
+        rng = np.random.default_rng()
+
     idx = rng.integers(0, len(samples))
     row = samples[idx]
     label = labels[idx]
@@ -26,12 +50,13 @@ def show_random_image(samples, labels, rng, image_shape=(28, 28), cmap="gray"):
     plt.axis("off")
     plt.show()
 
-def show_image_grid(samples,
-    cols=3,
-    figsize_per_image=2,
-    image_shape=(28, 28),
-    cmap="gray"):
-
+def show_image_grid(
+    samples: FloatArray,
+    cols: int = 3,
+    figsize_per_image: float = 2.0,
+    image_shape: tuple[int, int] = (28, 28),
+    cmap: str = "gray"
+) -> None:
     """Display multiple images in a grid layout"""
 
     n = len(samples)
