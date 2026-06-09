@@ -141,12 +141,12 @@ class MLP:
         return np.tanh(x)
 
     def _tanh_derivative(self, z: FloatArray) -> FloatArray:
-        return (1 - np.tanh(z) ** 2).astype(np.float32)
+        return (1 - np.tanh(z) ** 2)
     
     def _softmax(self, x: FloatArray) -> FloatArray:
         # Shift values for numerical stability
         x = x - np.max(x, axis=1, keepdims=True)
-        exp_x = np.exp(x).astype(np.float32)
+        exp_x = np.exp(x)
         # Convert logits into class probabilities
         return exp_x / np.sum(exp_x, axis=1, keepdims=True)
     
@@ -160,18 +160,22 @@ class MLP:
 
     def forward(self, x: FloatArray, training: bool = False) -> FloatArray:
         """Run a forward pass through the network"""
+        if x.ndim != 2:
+            raise ValueError(
+                f"Expected shape (batch_size, {self.layers[0]}), got {x.shape}")
+        
         if training:
             self._clear_cache()
             self.a_values.append(x)
 
         for weight,bias, activation in zip(
                 self.weight_matrices,
-                self. bias_vectors,
+                self.bias_vectors,
                 self.activations
         ):
             
-            z = (x @ weight + bias).astype(np.float32)
-            a = self.activations_map[activation](z).astype(np.float32)
+            z = (x @ weight + bias)
+            a = self.activations_map[activation](z)
 
             if training:
                 self.z_values.append(z)
@@ -183,4 +187,21 @@ class MLP:
 
     def predict(self, x: FloatArray) -> IntArray:
         """Predict a single label for each sample"""
+        if x.ndim == 1:
+            x = x.reshape(1, -1)
         return np.argmax(self.forward(x), axis=1)
+    
+    def parameters(self):
+        """Return each weight and its corresponding bias"""
+        return zip(self.weight_matrices, self.bias_vectors)
+    
+    def update_parameters(
+            self,
+            grad_w: list[FloatArray],
+            grad_b: list[FloatArray],
+            learning_rate: float = 0.01
+    ) -> None:
+        """Update model parameters based on learning rate and gradients"""
+        for i in range(len(self.weight_matrices)):
+            self.weight_matrices[i] -= learning_rate * grad_w[i]
+            self.bias_vectors[i] -= learning_rate * grad_b[i]
