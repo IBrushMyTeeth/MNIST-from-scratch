@@ -22,7 +22,7 @@ class MNISTDataLoader:
 
         self.filepath = Path(filepath)
         self.normalize = normalize
-        self.seed = seed
+        self.rng = np.random.default_rng(seed)
         self._samples, self._labels = self._load()
 
     def _load(self) -> tuple[Samples, Labels]:
@@ -70,8 +70,7 @@ class MNISTDataLoader:
         if not 0 < test_size < 1:
             raise ValueError(f"test_size must be in the range (0, 1), got {test_size}")
         
-        rng = np.random.default_rng(self.seed)
-        indices = rng.permutation(len(self))
+        indices = self.rng.permutation(len(self))
         samples = self._samples[indices]
         labels = self._labels[indices]
 
@@ -85,3 +84,19 @@ class MNISTDataLoader:
         
         return x_train, y_train, x_test, y_test
 
+    def batches(
+        self,
+        x: Samples,
+        y: Labels,
+        batch_size: int = 64,
+    ):
+        """Randomly shuffle the samples and yield mini-batches"""
+        n = len(y)
+
+        indices = self.rng.permutation(n)
+        x = x[indices]
+        y = y[indices]
+
+        for start in range(0, n, batch_size):
+            end = start + batch_size
+            yield x[start:end], y[start:end]        
