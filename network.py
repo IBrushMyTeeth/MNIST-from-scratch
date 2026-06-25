@@ -1,5 +1,6 @@
 import numpy as np
 from numpy.typing import NDArray
+from typing import cast
 
 FloatArray = NDArray[np.float32]
 IntArray = NDArray[np.int64]
@@ -187,10 +188,16 @@ class MLP:
 
     def predict(self, x: FloatArray) -> IntArray:
         """Predict a single label for each sample"""
-        if x.ndim == 1:
-            x = x.reshape(1, -1)
+        if x.ndim != 2:
+            raise ValueError(
+                f"Expected shape (batch_size, {self.layers[0]}), got {x.shape}")
         return np.argmax(self.forward(x), axis=1)
-    
+
+    def accuracy(self, x: FloatArray, labels: IntArray) -> float:
+        """Calculate the percentage of correctly guessed classes"""
+        pred = self.predict(x)
+        return np.mean(pred == labels)
+
     def parameters(self):
         """Return each weight and its corresponding bias"""
         return zip(self.weight_matrices, self.bias_vectors)
@@ -205,3 +212,126 @@ class MLP:
         for i in range(len(self.weight_matrices)):
             self.weight_matrices[i] -= learning_rate * grad_w[i]
             self.bias_vectors[i] -= learning_rate * grad_b[i]
+
+    def cross_entropy_loss(self, probs: FloatArray, y: IntArray) -> float:
+        """Mean cross-entropy loss"""
+        eps = 1e-12
+        
+        correct_probs = probs[np.arange((len(probs))), y]
+        correct_probs = np.clip(correct_probs, eps, 1.0)
+
+        return -np.mean(np.log(correct_probs)).astype(float)
+
+    """
+    After a forward pass where training=True, the cache contains something like
+
+    a_values[0] = input X
+
+    z_values[0] = before ReLU layer 1
+    a_values[1] = after ReLU layer 1
+
+    z_values[1] = before ReLU layer 2
+    a_values[2] = after ReLU layer 2
+
+    z_values[2] = before Softmax
+    a_values[3] = output probabilities
+    """
+    def backward(self, y_true: IntArray) -> tuple[list[FloatArray], list[FloatArray]]:
+        """Perform backpropagation and return derivatives of w and b"""
+        batch_size = y_true.shape[0]
+
+        grad_w = cast(list[FloatArray], [None] * len(self.weight_matrices))
+        grad_b = cast(list[FloatArray], [None] * len(self.bias_vectors))
+
+        y_pred = self.a_values[-1]
+
+        # One-hot labels
+        y_one_hot = np.zeros_like(y_pred)
+        y_one_hot[np.arange(batch_size), y_true] = 1
+
+        # Cross-entropy + softmax derivative
+        delta = y_pred - y_one_hot
+
+        for layer in reversed(range(len(self.weight_matrices))):
+
+            a_prev = self.a_values[layer]
+
+            grad_w[layer] = (a_prev.T @ delta) / batch_size
+            grad_b[layer] = (np.sum(delta, axis=0)) / batch_size
+
+            # propagate error to previous layer
+            if layer > 0:
+
+                activation = self.activations[layer - 1]
+
+                derivative = (self.activation_derivatives[activation])
+
+                delta = (
+                    delta @ self.weight_matrices[layer].T
+                ) * derivative(
+                    self.z_values[layer - 1]
+                )
+
+        return grad_w, grad_b
+    
+    def classification_report(self, x: FloatArray, y: IntArray) -> None:
+        "Generate a report of the models performence"
+
+        pred = self.predict(x)
+
+        total = len(y)
+        correct = np.sum(pred == y)
+        incorrect = total - correct
+        accuracy = correct / total
+
+        print("=" * 40)
+        print("MNIST Evaluation Report")
+        print("=" * 40)
+        print()
+
+        print(f"Samples Tested : {total}")
+        print(f"Correct        : {correct}")
+        print(f"Incorrect      : {incorrect}")
+        print()
+
+        print(f"Accuracy       : {accuracy:.2%}")
+        print()
+
+        print("Per-Class Accuracy")
+        print()
+
+        for digit in range(10):
+
+            mask = y == digit
+            digit_total = np.sum(mask)
+            digit_correct = np.sum(pred[mask] == y[mask])
+
+            digit_accuracy = 0
+            if 0 < digit_total:
+                digit_accuracy = digit_correct / digit_total
+            
+            print(f"Digit {digit}: Accuracy = {digit_accuracy}")
+        
+        print()
+        print("=" * 40)
+
+    def state_dict(self) -> dict:
+        """Return the architecture, weights and biases as a dictionary"""
+        return {
+            "layers" : self.layers,
+            "activations" : self.activations,
+            "weights" : self.weight_matrices,
+            "biases" : self.bias_vectors
+        }
+    
+    def save(self, filepath: str) -> None:
+        """Save current architecture, weights and biases in the specified path"""
+        state = self.state_dict()
+
+        np.savez(
+            filepath,
+            layers=np.array(state["layers"], dtype=np.int64),
+            activations=np.array(state["activations"], dtype=str),
+            weights=np.array(state["weights"], dtype=object),
+            biases=np.array(state["biases"], dtype=object),
+        )
