@@ -125,7 +125,21 @@ class MLP:
         if self.activations[-1] != "softmax":
             raise ValueError(
                 "Output layer must use softmax for MNIST classification."
-            )        
+            )
+
+    def set_parameters(
+        self,weights: list[FloatArray],
+        biases: list[FloatArray]
+    ) -> None:
+        "Set model parameters to given weights and biases"
+        if len(weights) != len(self.weight_matrices):
+            raise ValueError("Incorrect number of weight matrices.")
+
+        if len(biases) != len(self.bias_vectors):
+            raise ValueError("Incorrect number of bias vectors.")
+        
+        self.weight_matrices = weights
+        self.bias_vectors = biases      
     
     def _clear_cache(self):
         """Remove cached forward-pass values"""
