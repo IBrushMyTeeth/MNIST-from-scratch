@@ -80,5 +80,3 @@ def show_image_grid(
 
     plt.tight_layout()
     plt.show()
-
-
